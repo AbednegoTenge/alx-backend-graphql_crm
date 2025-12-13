@@ -93,7 +93,8 @@ class CreateCustomer(graphene.Mutation):
             )
 
         try:
-            customer = Customer.objects.create(name=name, email=email, phone=phone)
+            customer = Customer(name=name, email=email, phone=phone)
+            customer.save()
             return CreateCustomer(
                 customer=customer,
                 success=True,
@@ -158,7 +159,9 @@ class CreateBulkCustomers(graphene.Mutation):
         # Bulk create valid customers
         if valid_objects:
             with transaction.atomic():
-                created_customers = Customer.objects.bulk_create(valid_objects)
+                created_customers = Customer(valid_objects)
+                for cust in created_customers:
+                    cust.save()
 
         return CreateBulkCustomers(
             created_customers=created_customers,
@@ -204,7 +207,8 @@ class CreateProduct(graphene.Mutation):
             )
 
         try:
-            product = Product.objects.create(name=name, price=price, stock=stock)
+            product = Product(name=name, price=price, stock=stock)
+            product.save()
             return CreateProduct(
                 product=product,
                 success=True,
@@ -254,7 +258,8 @@ class CreateOrder(graphene.Mutation):
             )
 
         try:
-            order = Order.objects.create(customer=customer, product=product)
+            order = Order(customer=customer, product=product)
+            order.save()
             total_amount = product.price  # Assuming quantity is always 1 for simplicity
             return CreateOrder(
                 order=order,
@@ -317,7 +322,9 @@ class CreateBulkOrders(graphene.Mutation):
         if valid_orders:
             try:
                 with transaction.atomic():
-                    created_orders = Order.objects.bulk_create(valid_orders)
+                    created_orders = Order(valid_orders)
+                    for order in created_orders:
+                        order.save()
             except IntegrityError as ie:
                 # If DB error occurs, mark all valid orders as failed
                 for idx, o in enumerate(valid_orders):
