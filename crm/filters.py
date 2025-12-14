@@ -1,14 +1,13 @@
 import django_filters
 from django.db.models import Q
 from .models import Customer, Product, Order
-from graphene_django.filter import DjangoFilterConnectionField
+
 
 class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
     email = django_filters.CharFilter(field_name="email", lookup_expr="icontains")
     created_at = django_filters.DateFromToRangeFilter()
     phone_starts_with = django_filters.CharFilterh(metod="filter_phone_starts_with")
-    all_customers = DjangoFilterConnectionField(CustomerFilter)
 
     def filter_phone_starts_with(self, queryset, name, value):
         return queryset.filter(phone__startswith=value)

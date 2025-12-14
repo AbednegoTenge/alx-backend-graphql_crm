@@ -4,13 +4,14 @@ from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 from graphene_django import DjangoObjectType
 from .models import Customer, Product, Order
-
+from graphene_django.filter import DjangoFilterConnectionField
 
 # GraphQL Types
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
         fields = ("id", "name", "email", "phone")
+    
 
 
 class BulkCustomerInputType(graphene.InputObjectType):
@@ -346,6 +347,7 @@ class CreateBulkOrders(graphene.Mutation):
 # GraphQL Query
 class Query(graphene.ObjectType):
     customers = graphene.List(CustomerType)
+    all_customers = DjangoFilterConnectionField(CustomerType)
 
     def resolve_customers(root, info):
         return Customer.objects.all()
