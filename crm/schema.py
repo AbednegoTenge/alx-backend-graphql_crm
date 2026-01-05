@@ -3,7 +3,7 @@ import graphene
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 from graphene_django import DjangoObjectType
-from crm.models import Customer, Product, Order
+from crm.models import Product, Order, Customer
 from graphene_django.filter import DjangoFilterConnectionField
 
 # GraphQL Types
