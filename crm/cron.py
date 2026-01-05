@@ -1,5 +1,6 @@
 from datetime import datetime
-import requests
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 def log_crm_heartbeat():
     TIMESTAMP = datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
@@ -7,11 +8,13 @@ def log_crm_heartbeat():
     # optionally query GraphQL reponsiveness
     graphql_status = ""
     try:
-        response = requests.post(
-            "http://localhost:8000/graphql",
-            params={"query": "{hello}"},
-            timeout=5
+        transport = RequestsHTTPTransport(
+            url="http://localhost:8000/graphql/",
+            verify=True,
+            retries=3,
         )
+        client = Client(transport=transport, fetch_schema_from_transport=True)
+        response = client.execute(gql("{hello}"))
         if response.status_code == 200:
             data = response.json()
             if data.get("data", {}).get("hello"):
@@ -20,7 +23,7 @@ def log_crm_heartbeat():
                 graphql_status = "GraphQL did not return expected data"
         else:
             graphql_status = f"GraphQL returned status code {response.status_code}"
-    except requests.exceptions.RequestException as e:
+    except RequestsHTTPTransport.exceptions.RequestException as e:
         graphql_status = f"GraphQL request failed: {e}"
     except Exception as e:
         graphql_status = f"Unexpected error: {e}"
