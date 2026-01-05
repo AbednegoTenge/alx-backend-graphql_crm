@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'graphene_django',
     'django_filters',
     'crm',
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -128,3 +129,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GRAPHENE = {
     'SCHEMA': 'alx_backend_graphql.schema.schema'
 }
+
+CRONJOBS = [
+    ('*/5 * * * *', 'crm.cron.log_crm_heartbeat'),
+]
+
+# Optional: Crontab settings for better logging
+CRONTAB_LOCK_JOBS = True  # Prevent overlapping job execution
+CRONTAB_COMMAND_SUFFIX = '2>&1'  # Capture stderr in logs
