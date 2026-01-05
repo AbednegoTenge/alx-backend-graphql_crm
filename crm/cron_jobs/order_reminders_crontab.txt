@@ -1,1 +1,1 @@
-0 8 * * * /home/abednego-tenge/Desktop/Projects/alx_backend_graphql/venv/bin/python /home/abednego-tenge/Desktop/Projects/alx_backend_graphql/crm/cron_jobs/send_order_reminders.py
+0 8 * * * /usr/bin/python3 /home/abednego-tenge/Desktop/Projects/alx-backend-graphql/crm/cron_jobs/send_order_reminders.py
