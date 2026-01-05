@@ -11,13 +11,18 @@ class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
         fields = ("id", "name", "email", "phone")
-    
+        interfaces = (graphene.relay.Node,)  # Add this for connection support
+        filter_fields = {
+            'name': ['exact', 'icontains'],
+            'email': ['exact', 'icontains'],
+        }
 
 
 class BulkCustomerInputType(graphene.InputObjectType):
     name = graphene.String(required=True)
     email = graphene.String(required=True)
     phone = graphene.String(required=False)
+
 
 # Input type for bulk orders
 class BulkOrderInputType(graphene.InputObjectType):
@@ -36,10 +41,12 @@ class OrderType(DjangoObjectType):
         model = Order
         fields = ("id", "customer", "product", "order_date")
 
+
 class BulkCustomerError(graphene.ObjectType):
     index = graphene.Int()
     email = graphene.String()
     messages = graphene.String()
+
 
 # Error object for bulk orders
 class BulkOrderError(graphene.ObjectType):
@@ -157,12 +164,10 @@ class CreateBulkCustomers(graphene.Mutation):
                     messages=str(ve)
                 ))
 
-        # Bulk create valid customers
+        # Bulk create valid customers - FIXED: use bulk_create
         if valid_objects:
             with transaction.atomic():
-                created_customers = Customer(valid_objects)
-                for cust in created_customers:
-                    cust.save()
+                created_customers = Customer.objects.bulk_create(valid_objects)
 
         return CreateBulkCustomers(
             created_customers=created_customers,
@@ -170,6 +175,7 @@ class CreateBulkCustomers(graphene.Mutation):
             message=f"Created {len(created_customers)} customers.",
             errors=errors if errors else None
         )
+
 
 # Product Mutation
 class CreateProduct(graphene.Mutation):
@@ -245,11 +251,13 @@ class CreateOrder(graphene.Mutation):
             customer = Customer.objects.get(id=customer_id)
         except Customer.DoesNotExist:
             errors.append("Customer does not exist.")
+            customer = None
 
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             errors.append("Product does not exist.")
+            product = None
 
         if errors:
             return CreateOrder(
@@ -261,7 +269,6 @@ class CreateOrder(graphene.Mutation):
         try:
             order = Order(customer=customer, product=product)
             order.save()
-            total_amount = product.price  # Assuming quantity is always 1 for simplicity
             return CreateOrder(
                 order=order,
                 success=True,
@@ -290,7 +297,6 @@ class CreateBulkOrders(graphene.Mutation):
     def mutate(cls, root, info, orders):
         created_orders = []
         errors = []
-
         valid_orders = []
 
         for index, data in enumerate(orders):
@@ -319,13 +325,11 @@ class CreateBulkOrders(graphene.Mutation):
             # If both exist, prepare for creation
             valid_orders.append(Order(customer=customer, product=product))
 
-        # Bulk create valid orders
+        # Bulk create valid orders - FIXED: use bulk_create
         if valid_orders:
             try:
                 with transaction.atomic():
-                    created_orders = Order(valid_orders)
-                    for order in created_orders:
-                        order.save()
+                    created_orders = Order.objects.bulk_create(valid_orders)
             except IntegrityError as ie:
                 # If DB error occurs, mark all valid orders as failed
                 for idx, o in enumerate(valid_orders):
@@ -337,17 +341,59 @@ class CreateBulkOrders(graphene.Mutation):
                     ))
                 created_orders = []
 
-        return cls(
+        return CreateBulkOrders(
             created_orders=created_orders,
             success=len(errors) == 0,
             message=f"Created {len(created_orders)} orders.",
             errors=errors if errors else None
         )
 
+
+# Update Low Stock Products Mutation
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass
+
+    updated_products = graphene.List(ProductType)
+    success = graphene.Boolean()
+    message = graphene.String()
+    count = graphene.Int()
+
+    @classmethod
+    def mutate(cls, root, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        
+        # count products to be updated
+        count = low_stock_products.count()
+
+        if count == 0:
+            return UpdateLowStockProducts(
+                updated_products=[],
+                success=True,
+                message="No low stock products to update.",
+                count=0
+            )
+        
+        # add 10 to stock for low stock products
+        updated_products = []
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_products.append(product)
+        
+        return UpdateLowStockProducts(
+            updated_products=updated_products,
+            success=True,
+            message=f"Updated stock for {count} low stock products.",
+            count=count
+        )
+
+
 # GraphQL Query
 class Query(graphene.ObjectType):
     customers = graphene.List(CustomerType)
     all_customers = DjangoFilterConnectionField(CustomerType)
+    hello = graphene.String(default_value="Hello, GraphQL!")
 
     def resolve_customers(root, info):
         return Customer.objects.all()
@@ -360,6 +406,7 @@ class Mutation(graphene.ObjectType):
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
     bulk_create_orders = CreateBulkOrders.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
 
 
 # GraphQL Schema
