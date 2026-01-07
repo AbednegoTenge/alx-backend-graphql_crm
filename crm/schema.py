@@ -41,6 +41,10 @@ class OrderType(DjangoObjectType):
         model = Order
         fields = ("id", "customer", "product", "order_date")
 
+class CRMReportType(graphene.ObjectType):
+    total_customers = graphene.Int()
+    total_orders = graphene.Int()
+    total_revenue = graphene.Float()
 
 class BulkCustomerError(graphene.ObjectType):
     index = graphene.Int()
@@ -394,6 +398,17 @@ class Query(graphene.ObjectType):
     customers = graphene.List(CustomerType)
     all_customers = DjangoFilterConnectionField(CustomerType)
     hello = graphene.String(default_value="Hello, GraphQL!")
+    crmreport = graphene.Field(CRMReportType)
+
+    def resolve_crmreport(root, info):
+        total_customers = Customer.objects.count()
+        total_orders = Order.objects.count()
+        total_revenue = sum(order.product.price for order in Order.objects.all())
+        return CRMReportType(
+            total_customers=total_customers,
+            total_orders=total_orders,
+            total_revenue=total_revenue
+        )
 
     def resolve_customers(root, info):
         return Customer.objects.all()

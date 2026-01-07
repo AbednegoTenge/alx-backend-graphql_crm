@@ -3,3 +3,8 @@ django-filter
 graphene-django
 django-crontab
 gql
+celery
+redis
+django-cors-headers
+djangorestframework
+django-celery-beat
