@@ -9,7 +9,7 @@ import json
     retry_backoff=30,
     retry_kwargs={"max_retries": 3},
 )
-def generate_crm_report(self):
+def generate_crm_report():
     print("Generating CRM report...")
 
     graphql_url = "http://localhost:8000/graphql/"
